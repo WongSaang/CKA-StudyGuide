@@ -63,10 +63,10 @@ metadata:
  namespace: rbac-test
 ```
 
-of particular importance is the format of the below.  
-`apiGroup` : Determines which API group to apply this to.
-`resources`: Which resource types to apply this to.
-`verbs`: What we can do to these objects (ie create, delete, watch, etc)
+特别重要的是下面内容的格式。
+`apiGroup` : 确定要将其应用于哪个API组。
+`resources`: 要将其应用于哪些资源类型。
+`verbs`: 我们可以对这些对象执行哪些操作（例如创建、删除、监视等）。
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -96,52 +96,53 @@ subjects:
   namespace: rbac-test
 ```
 
-We can then validate this with kubectl. The following returns yes as that service account can get pods
+然后我们可以使用 kubectl 进行验证。以下命令会返回 yes，因为该服务账号有权限获取 pods 。
 
 ```shell
 kubectl -n rbac-test --as=system:serviceaccount:rbac-test:rbac-test-sa auth can-i get pods
 yes
 ```
 
-However with `secrets`, it returns `no`
+然而对于 `secrets`，它会返回 `no`。 
 
 ```shell
 kubectl -n rbac-test --as=system:serviceaccount:rbac-test:rbac-test-sa auth can-i get secrets
 no
 ```
 
-## Use Kubeadm to install a basic cluster
+## 使用 Kubeadm 安装一个基础集群
 
-kubeadm is a utility to bootstrap Kubernetes to a number of existing, vanilla nodes. It takes care of the etcd cluster, Kubernetes master and worker nodes including all the required components to instantiate a viable minimum k8s cluster.
+kubeadm 是一个用来引导部署 Kubernetes 的实用程序，可以将 Kubernetes 引导部署到若干现有的、原生节点上。
+kubeadm 是一个用于在多个现有、普通节点上初始化 Kubernetes 的工具。它负责处理 etcd 集群、Kubernetes 主节点和工作节点，包括启动一个可用的最小 k8s 集群所需的所有组件。
 
-What you get at the end of using kubeadm is a fully working, fully functioning kubernetes cluster.
+使用 Kubeadm 完成部署后，你将得到一个完全可用、功能齐全的 Kubernetes 集群。
 
-It's at the opposite end of the spectrum in terms of difficulty compared to, for example, Kelsey Hightower's "Kubernetes the hard way".
+在难度方面，它与 Kelsey Hightower 的 “Kubernetes the hard way” 完全相反。
 
-For the exam, it is recommended that you become familiar with both ways of deploying Kubernetes clusters.
+为了考试，建议您熟悉这两种部署 Kubernetes 的方式。
 
-Kubeadm is a command line utility that performs the following functions:
+Kubeadm 是一个命令行工具，它执行以下功能：
 
-* **kubeadm init** to bootstrap a Kubernetes control-plane node
-* **kubeadm join** to bootstrap a Kubernetes worker node and join it to the cluster
-* **kubeadm upgrade** to upgrade a Kubernetes cluster to a newer version
-* **kubeadm config** if you initialized your cluster using kubeadm v1.7.x or lower, to configure your cluster for kubeadm upgrade
-* **kubeadm token** to manage tokens for kubeadm join
-* **kubeadm reset** to revert any changes made to this host by kubeadm init or kubeadm join
-* **kubeadm version** to print the kubeadm version
-* **kubeadm alpha** to preview a set of features made available for gathering feedback from the community
+* **kubeadm init** 用于引导一个 Kubernetes 控制平面节点
+* **kubeadm join** 用于引导一个 Kubernetes 工作节点，并将工作节点加入集群
+* **kubeadm upgrade** 用于将 Kubernetes 集群更新到新版本
+* **kubeadm config** 如果你的集群是用 kubeadm v1.7.x 或更低版本初始化的, 在使用 **kubeadm upgrade** 升级集群之前，使用这个命令来配置你的集群
+* **kubeadm token** 用于管理加入集群的令牌
+* **kubeadm reset** 用于撤销 kubeadm init 或 kubeadm join 对当前主机所做的所有更改
+* **kubeadm version** 用于打印 kubeadm 的版本
+* **kubeadm alpha** 用于访问和测试实验性功能
 
-### Kubeadm - Master Node Install
+### Kubeadm - 安装主节点
 
-In the following examples 3x Ubuntu Server VMs were created
+创建3台 Ubuntu Server 虚拟机用于以下示例
 
 * k8s-cl02-ms01
 * k8s-cl02-wk01
 * k8s-cl02-wk02
 
-Where appropriate, ensure your nodes have a container runtime installed.
+在适当情况下，确保您的节点已安装容器运行时。
 
-On the master node install the required binaries
+在主节点上安装所需的二进制文件
 
 ```shell
 apt-get update && apt-get install -y apt-transport-https curl
@@ -154,15 +155,17 @@ apt-get install -y kubelet kubeadm kubectl
 apt-mark hold kubelet kubeadm kubectl
 ```
 
-Initialise the master node:
+初始化主节点:
 
 ```shell
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+# 如果是中国网络，你可以使用
+sudo kubeadm init --image-repository=registry.aliyuncs.com/google_containers --pod-network-cidr=10.244.0.0/16
 ```
 
-Note, the requirement to pass --pod-network is dependent on the chosen CNI. For Flannel, this is required. Kubeadm will also let you know if any prerequisites are not made.
+注意，是否需要传递 `--pod-network` 参数，取决于所选择的 CNI（容器网络接口）。对于 Flannel， 这是必须的。Kubeadm 还会提示您是否有未满足的前置条件。
 
-Once completed, a message will be displayed:
+完成后，将显示:
 
 ```shell
 Your Kubernetes control-plane has initialized successfully!
@@ -183,34 +186,34 @@ kubeadm join 172.16.10.80:6443 --token j5nqhd.cnfmnjgc68aato60 \
     --discovery-token-ca-cert-hash sha256:cbc91031c1ffa47bbea83aa1cf65e99821a1f582c4363e1a4408715bfd66bb60 
 ```
 
-Some important pieces of information to note:
+需要注意的一些重要信息：
 
-* Kubeadm has created the admin kubeconfig file for you, and recommends copying this to the logged on users home directory for ease
+* Kubeadm 已为您创建了管理员 kubeconfig 文件，建议将其复制到当前登录用户的主目录以方便使用。
 
-* Kubeadm has **not** deployed a pod networking solution yet. Therefore, this is a post-install activity
+* Kubeadm 尚未部署 Pod 网络解决方案。因此，这属于安装后的操作。
 
-* Kubeadm has provided a join command together with a token to add worker nodes. We can regenerate this token if required.
+* Kubeadm 提供了一个带有令牌的 join 命令，用于添加工作节点。如果需要，我们可以重新生成该令牌。
 
-If we issue a kubectl get nodes command we will see the master node is not ready
+如果我们执行 `kubectl get nodes` 命令，会看到主节点处于未就绪状态。
 
 ```shell
 NAME            STATUS     ROLES    AGE     VERSION
 k8s-cl02-ms01   NotReady   master   6m20s   v1.20.2
 ```
 
-As per the output of kubeadm, install a network solution, Ie flannel.
+根据 kubeadm 的输出，安装一个网络解决方案，例如 Flannel。
 
-For flannel to work correctly, you must pass --pod-network-cidr=10.244.0.0/16 to kubeadm init.
+为了使 Flannel 正常工作，您必须在运行 kubeadm init 时传递参数 --pod-network-cidr=10.244.0.0/16。
 
-Additionally, set /proc/sys/net/bridge/bridge-nf-call-iptables to 1 by running `sysctl net.bridge.bridge-nf-call-iptables=1`.
+此外，通过运行 `sysctl net.bridge.bridge-nf-call-iptables=1` 将 bridge-nf-call-iptables 设置为 1。
 
-Install Flannel:
+安装 Flannel:
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
 
-After a few seconds, the master node will now be ready
+几秒钟后，主节点将变为就绪状态。 
 
 ```shell
 NAME            STATUS   ROLES    AGE   VERSION
@@ -218,31 +221,31 @@ k8s-cl02-ms01   Ready    master   10m   v1.20.2
 
 ```
 
-### Kubeadm - Install worker nodes
+### Kubeadm - 安装工作节点
 
-The installation process for worker nodes is similar to master nodes - the only exception is we do **not** execute the "kubeadm init" command, as this is only run on masters. For workers, we use "kubeadm join".
+工作节点的安装过程跟主节点类似 —— 唯一不要做的是执行`kubeadm init` 命令，它只在主节点运行。对于工作节点，我们使用`kubeadm join`。
 
-As prep:
+准备工作:
 
-* Install a container runtime
-* Install the kubeadm binaries (as above)
+* 安装一个容器运行时
+* 安装 Kubeadm 二进制文件（和上面一样）
 
-To join a worker node to a cluster created by kubeadm we need to use the kubeadm join command with a token generated on the master. This is shown after we run kubeadm init on the master node. However, we can easily regenerate this on the master node should it not be noted down or expired:
+要将工作节点加入由 kubeadm 创建的集群，我们需要使用 kubeadm join 命令，并使用在主节点上生成的令牌。该令牌会在主节点运行 kubeadm init 后显示出来。然而，如果令牌未被记录或已过期，我们可以在主节点上轻松重新生成：
 
-(on the master node)
+（在主节点上）
 
 ```shell
 david@k8s-cl02-ms01:~$ kubeadm token create --print-join-command
 kubeadm join 172.16.10.80:6443 --token ht55yv.8lq69q0189xhe2ql     --discovery-token-ca-cert-hash sha256:cbc91031c1ffa47bbea83aa1cf65e99821a1f582c4363e1a4408715bfd66bb60
 ```
 
-Use this command on the worker (as root)
+在工作节点上使用此命令（以 root 用户身份运行）
 
 ```shell
 root@k8s-cl02-wk01:~# kubeadm join 172.16.10.80:6443 --token ht55yv.8lq69q0189xhe2ql     --discovery-token-ca-cert-hash sha256:cbc91031c1ffa47bbea83aa1cf65e99821a1f582c4363e1a4408715bfd66bb60
 ```
 
-After which confirmation will be displayed:
+之后会显示确认信息：
 
 ```shell
 This node has joined the cluster:
@@ -252,7 +255,7 @@ This node has joined the cluster:
 Run 'kubectl get nodes' on the control-plane to see this node join the cluster.
 ```
 
-To validate, run kubectl get nodes on the master node:
+要验证，请在主节点上运行 `kubectl get nodes` 命令：
 
 ```shell
 NAME            STATUS   ROLES    AGE     VERSION
@@ -260,39 +263,40 @@ k8s-cl02-ms01   Ready    master   50m     v1.20.2
 k8s-cl02-wk01   Ready    <none>   2m10s   v1.20.2
 ```
 
-## Manage a highly-available Kubernetes cluster
+## 管理一个高可用的 Kubernetes 集群
 
-The previous section demonstrated creating a K8s cluster with one master node and several worker nodes - this does not provide resilience for the control plane. Several topologies exist for doing so:
+上一节演示了创建一个包含一个主节点和多个工作节点的 K8s 集群——这种方式无法为控制平面提供容错能力。为实现这一目标，有几种拓扑结构可供选择：
 
-### Stacked etcd
+### 堆叠式 etcd
 
 ![img.png](images/stacked-etcd.png)
 
-* Multiple worker nodes
-* Multiple control plane nodes fronted by a loadbalancer
-* Embedded etcd within control plane
+* 多个工作节点
+* 在负载均衡器后面部署多个控制平面节点
+* 控制平面内的嵌入 etcd
 
-Notes:
+注意:
 
-etcd is quorum based. Therefore, if using stacked control plane nodes with etcd, odd numbers must be used.
 
-### External etcd
+etcd 是基于 [Quorum机制](https://zh.wikipedia.org/wiki/Quorum_(%E5%88%86%E5%B8%83%E5%BC%8F%E7%B3%BB%E7%BB%9F)) 的。因此，如果使用堆叠式控制平面节点和 etcd，则必须使用奇数个节点。
+
+### 外部 etcd
 
 ![img.png](images/external-etcd.png)
 
 Notes:
 
-* Multiple worker nodes
-* Multiple control plane nodes fronted by a loadbalancer
-* Etcd is external of the k8s cluster
+* 多个工作节点
+* 在负载均衡器后面部署多个控制平面节点
+* Etcd 独立于 K8s 集群运行
 
-Notes:
+注意:
 
-Advantage with this setup is etcd and the control plane can be scaled and managed independently of each other. This provides greater flexibility at the expense of operational complexity.
+这种设置的优势在于 etcd 和控制平面可以独立扩展和管理。这提供了更大的灵活性，但以增加操作复杂性为代价。
 
-### Assessing cluster health
+### 评估集群健康状况 
 
-`kubectl get componentstatus` is deprecated as of 1.20. A suitable replacement includes probing the API server directly, For example, on a master node, run `curl -k https://localhost:6443/livez?verbose` which returns:
+`kubectl get componentstatus` 从 1.20 版本开始已被弃用。一个合适的替代方法是直接探测 API 服务器。例如，在主节点上运行 `curl -k https://localhost:6443/livez?verbose`，它会返回：
 
 ```shell
 [+]ping ok
@@ -303,46 +307,51 @@ Advantage with this setup is etcd and the control plane can be scaled and manage
 .....etc
 ```
 
-Three endpoints exist - `healthz`,`livez` and `readyz` to indicate the current status of the API server
+存在三个端点——`healthz`、`livez` 和 `readyz`，用于指示 API 服务器的当前状态：
 
-## Provision underlying infrastructure to deploy a Kubernetes cluster
+* healthz：健康检查端点，表示 API 服务器的总体健康状况。
+* livez：存活检查端点，表示 API 服务器是否正在运行。
+* readyz：就绪检查端点，表示 API 服务器是否准备好处理请求。
 
-The topology choices above will influence the underlying resources that need to be provisioned. How these are provisioned are specific to the underlying cloud provider. Some generic observations:
 
-* Disable swap.
-* Leverage cloud capabilities for HA - ie using multiple AZ's.
-* Windows can be used for worker nodes, but not control plane.
+## 为部署 Kubernetes 集群提供底层基础设施
 
-## Perform a version upgrade on a Kubernetes cluster using Kubeadm
+上述拓扑选择将影响需要提供的底层资源。这些资源的配置方式取决于具体的云服务提供商。一些通用的观察包括：
 
-First, install kubeadm to a specific version. This will determine the k8s version that it deploys:
+* 禁用 swap.
+* 利用云功能实现高可用性——例如使用多个可用区（AZ）。
+* Windows 可用于工作节点，但不能用于控制平面。
+
+## 使用 Kubeadm 对 Kubernetes 集群进行版本升级
+
+首先，安装指定版本的 kubeadm。这将决定它部署的 Kubernetes 版本：
 
 ```shell
 sudo apt-get update && sudo apt-get install -y kubeadm=1.19.0-00 kubelet=1.19.0-00 kubectl=1.19.0-00 && sudo apt-mark hold kubeadm
 ```
 
-Stand up a k8s cluster
+启动一个 Kubernetes 集群 
 
 ```shell
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 ```
 
-Add CNI
+添加 CNI (Container Network Interface - 容器网络接口)
 
 ```shell
 https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
 ```
 
-To upgrade the underlying k8s cluster, we need to upgrade kubeadm.
+要升级底层 Kubernetes 集群，我们需要先升级 kubeadm。 
 
-Update kubeadm
+升级 kubeadm
 
 ```shell
 sudo apt-mark unhold kubeadm
 sudo apt-get install --only-upgrade kubeadm
 ```
 
-Next we `plan` the upgrade - this won't change our cluster but will display what changes can be made:
+接下来，我们运行 `plan` 命令进行升级规划——这不会改变集群，但会显示可以进行的更改
 
 ```shell
 sudo kubeadm upgrade plan
@@ -366,31 +375,31 @@ You can now apply the upgrade by executing the following command:
 kubeadm upgrade apply v1.20.2
 ```
 
-**Important note:** kubelet must be upgraded manually after this step.
+**重要提示：** 在此步骤之后，必须手动升级 kubelet。
 
-Upgrade the cluster:
+升级集群:
 
 ```shell
 kubeadm upgrade apply v1.20.2
 ```
 
-upgrade Kubelet:
+升级 Kubelet:
 
 ```shell
 sudo apt-get install --only-upgrade kubelet kubectl
 ```
 
-## Implement etcd backup and restore
+## 实施 etcd 备份和恢复
 
-### Backing up etcd
+### 备份 etcd
 
-Take a snapshot of the DB, then store it in a safe location:
+对数据库进行快照备份，然后将其存储在安全位置：
 
 ```bash
 ETCDCTL_API=3 etcdctl snapshot save snapshot.db --cacert /etc/kubernetes/pki/etcd/server.crt --cert /etc/kubernetes/pki/etcd/ca.crt --key /etc/kubernetes/pki/etcd/ca.key
 ```
 
-Verify the backup:
+验证备份：
 
 ```shell
 sudo ETCDCTL_API=3 etcdctl --write-out=table snapshot status snapshot.db
@@ -401,9 +410,9 @@ sudo ETCDCTL_API=3 etcdctl --write-out=table snapshot status snapshot.db
 +----------+----------+------------+------------+
 ```
 
-### Restore to etcd
+### 恢复到 etcd
 
-To perform a restore:
+要执行恢复操作：
 
 ```shell
 ETCDCTL_API=3 etcdctl snapshot restore snapshot.db
