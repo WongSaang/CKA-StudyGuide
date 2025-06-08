@@ -1,8 +1,9 @@
-# Workloads and Scheduling
+# 工作负载和调度
 
-## Understand deployments and how to perform rolling update and rollbacks
+## 了解部署以及如何执行滚动更新和回滚
 
-Deployments are intended to replace Replication Controllers.  They provide the same replication functions (through Replica Sets) and also the ability to rollout changes and roll them back if necessary. An example configuration is shown below:
+Deployment 旨在取代 Replication Controller。它们提供相同的复制功能（通过 Replica Sets）以及推出更改并在必要时回滚的能力。下面是一个示例配置：
+
 
 ```yaml
 apiVersion: apps/v1
