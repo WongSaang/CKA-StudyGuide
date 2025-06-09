@@ -12,6 +12,9 @@ metadata:
   name: nginx-deployment
 spec:
   replicas: 5
+  selector:
+    matchLabels:
+      app: nginx-frontend
   template:
     metadata:
       labels:
@@ -24,24 +27,25 @@ spec:
         - containerPort: 80
 ```
 
-The main reason why leverage `deployments` is to manage a number of identical pods via one administrative unit - the `deployment` object. Should we need to make changes, we apply this to the `deployment` object, not individual pods. Because of the declarative nature of `deployments`, Kubernetes will rectify any changes between desired and running state, and rectify accordingly. For example, if we manually deleted.
+利用 `deployments` 的主要原因是通过一个管理单元——`deployment` 对象，来管理多个相同的 Pod。如果需要进行更改，我们将更改应用到 `deployment` 对象，而不是单独的 Pod。由于 `deployments` 的声明式特性，Kubernetes 会纠正期望状态与运行状态之间的任何差异，并进行相应调整。例如，如果我们手动删除了某些内容。
 
-We can then describe it with `kubectl describe deployment nginx-deployment`
+然后我们可以使用 `kubectl describe deployment nginx-deployment` 来描述它：
 
-### Update
+### 更新
 
-To update an existing deployment, we have two main options:
+要更新现有的部署，我们有两个主要选项：
 
-* Rolling Update
-* Recreate
+* 滚动更新
+* 重建
 
-A rolling update, as the name implies, will swap out containers in a deployment with one created by a new image.
+滚动更新，顾名思义，会将部署中的容器替换为由新镜像创建的容器。
 
-Use a rolling update when the application supports having a mix of different pods (aka application versions). This method will also involve no downtime of the service, but will take longer to bring up the deployment to the requested version. Old and new versions of the pod spec will coexist until they're all rotated.
+当应用程序支持不同 Pod 混合（即应用程序版本）时，使用滚动更新。这种方法不会导致服务停机，但需要更长时间才能将部署提升到所请求的版本。旧版本和新版本的 Pod 规范将共存，直到它们全部轮换。
 
-A recreation will delete all the existing pods and then spin up new ones. This method will involve downtime. Consider this a “bing bang” approach
+重新创建会删除所有现有的 Pod，然后启动新的 Pod。这种方法会导致停机时间，可将其视为一种“爆炸式”方法。
 
-Examples listed in the Kubernetes documentation are largely imperative, but I prefer to be declarative. As an example, create a new yaml file and make the required changes, in this example, the version of the nginx container is incremented.
+Kubernetes 文档中列出的示例大多是命令式的，但我更喜欢声明式的方法。例如，创建一个新的 yaml 文件并进行所需的更改，在此示例中，nginx 容器的版本被提升。
+
 
 ```yaml
 apiVersion: apps/v1
@@ -62,9 +66,10 @@ spec:
         - containerPort: 80
 ```
 
-We can then apply this file `kubectl apply -f updateddeployment.yaml --record=true`
+然后我们可以应用此文件：`kubectl apply -f updateddeployment.yaml --record=true`
 
-Followed by the following:
+接着执行以下操作：
+
 
 ```shell
 kubectl rollout status deployment/nginx-deployment
@@ -89,7 +94,7 @@ Waiting for deployment "nginx-deployment" rollout to finish: 4 of 5 updated repl
 deployment "nginx-deployment" successfully rolled out
 ```
 
-We can also use the kubectl rollout history to look at the revision history of a deployment
+我们还可以使用 `kubectl rollout history` 来查看部署的修订历史记录：
 
 ```shell
 kubectl rollout history deployment/nginx-deployment
@@ -102,7 +107,7 @@ REVISION  CHANGE-CAUSE
 5     kubectl apply --filename=updateddeployment.yaml --record=true
 ```
 
-Alternatively, we can also do this imperatively:
+另外，我们也可以使用命令式方法来实现：
 
 ```shell
 kubectl --record deployments/nginx-deployment set image deployments/nginx-deployment nginx=nginx:1.9.1
@@ -111,37 +116,37 @@ deployment.extensions/nginx-deployment image updated
 deployment.extensions/nginx-deployment image updated
 ```
 
-### Rollback
+### 回滚
 
-To rollback to the previous version:
+回滚到上一个版本：
 
 ```shell
 kubectl rollout undo deployment/nginx-deployment 
 ```
 
-To rollback to a specific version:
+回滚到特定版本：
 
 ```shell
 kubectl rollout undo deployment/nginx-deployment --to-revision 5
 ```
 
-Source of `revision`: `kubectl rollout history deployment/nginx-deployment`
+`revision` 的来源：`kubectl rollout history deployment/nginx-deployment`
 
-## Use ConfigMaps and Secrets to configure applications
+## 了解如何使用 ConfigMaps 和 Secrets 来配置应用程序
 
-Configmaps are a way to decouple configuration from a pod manifest. Obviously, the first step is to create a config map before we can get pods to use them:
+ConfigMaps 是一种将配置与 Pod 清单解耦的方法。显然，第一步是在让 Pod 使用它们之前创建一个 ConfigMap： 
 
 ```shell
 kubectl create configmap <map-name> <data-source>
 ```
 
-“Map-name” is an arbitrary name we give to this particular map, and “data-source” corresponds to a key-value pair that resides in the config map.
+“Map-name” 是我们为这个特定映射指定的任意名称，而 “data-source” 对应的是存储在 ConfigMap 中的键值对。
 
 ```shell
 kubectl create configmap vt-cm --from-literal=blog=virtualthoughts.co.uk
 ```
 
-At which point we can then describe it:
+此时我们可以描述它：
 
 ```shell
 kubectl describe configmap vt-cm
@@ -157,9 +162,10 @@ blog:
 virtualthoughts.co.uk
 ```
 
-To reference this config map in a pod, we declare it in the respective yaml:
+要在 Pod 中引用此 ConfigMap，我们需要在相应的 YAML 文件中声明它：
 
-Configmaps can be mounted as `volumes` or `environment variables`. The below example leverages the latter.
+ConfigMap 可以作为`volumes`（卷）或`volumes`（环境变量）挂载。以下示例利用了后者。
+
 
 ```yaml
 apiVersion: v1
@@ -180,7 +186,7 @@ spec:
  restartPolicy: Never
 ```
 
-The pod above will output the environment variables, so we can validate it’s leveraged the config map by extracting the logs from the pod:
+上述 Pod 将输出环境变量，因此我们可以通过提取 Pod 的日志来验证它是否使用了 ConfigMap：
 
 ```shell
 kubectl logs config-test-pod | grep "BLOG_NAME="
@@ -189,7 +195,7 @@ BLOG_NAME=virtualthoughts.co.uk
 ...
 ```
 
-## Know how to scale applications
+## 了解如何扩展应用程序
 
 Constantly adding more, individual pods is not a sustainable model for scaling an application. To facilitate applications at scale, we need to leverage higher level constructs such as replicasets or deployments. As mentioned previously, `deployments` provide us with a single administrative unit to manage the underlying pods. We can scale a `deployment` object to increase the number of `pods`.
 
@@ -426,43 +432,43 @@ kustomize build ./overlay/dev | kubectl apply -f -
 
 By running this, only 1 pod will be created in the deployment object, instead of what's defined in the `base` because of the customisation we've applied. We can do the same with prod, or any arbitrary number of environments.
 
+
 ### Helm
 
-Helm is synonymous to what `apt` or `yum` are in the Linux world. It's effectively a package manager for Kubernetes. "Packages" in Helm are called `charts` to which you can customise with your own values.
+Helm 类似于 Linux 世界中的 apt 或 yum。它实际上是 Kubernetes 的包管理器。Helm 中的“包”被称为 `charts`，您可以使用自己的值对其进行自定义。
 
-It's unlikely the exam will require anyone to create a helm chart from scratch, but an understanding of how it works is a good idea.
+考试不太可能要求任何人从头创建一个 Helm 图表，但了解其工作原理是个好主意。
 
-#### Helm Repos
-
-Repos are where helm charts are stored. Typically, a repo will contain a number of charts to choose from. Helm can be managed by a CLI client, and a repo can be added by running:
+#### Helm 仓库
+仓库是存储 Helm 图表的地方。通常，一个仓库会包含多个可供选择的图表。Helm 可以通过 CLI 客户端进行管理，可以通过运行以下命令添加仓库：
 
 ```shell
 helm repo add bitnami https://charts.bitnami.com/bitnami
 ```
 
-To list the packages from this repo:
+列出仓库中的包：
 
 ```shell
 helm search repo bitnami
 ```
 
-To install a package from this repo:
+从仓库安装包：
 
 ```shell
 helm install my-release bitnami/mariadb
 ```
 
-Where `my-release` is a string identifying an installed instance of this application
+其中 my-release 是一个字符串，用于标识该应用程序的已安装实例。
 
-Parameters that can be customised - are dependent on how the chart is configured. For the aforementioned MariaDB chart, they are listed at [https://github.com/bitnami/charts/tree/master/bitnami/mariadb/#parameters](https://github.com/bitnami/charts/tree/master/bitnami/mariadb/#parameters)
+可以自定义的参数取决于图表的配置方式。对于上述的 MariaDB 图表，它们列在[https://github.com/bitnami/charts/tree/master/bitnami/mariadb/#parameters](https://github.com/bitnami/charts/tree/master/bitnami/mariadb/#parameters)
 
-These values are encapsulated in the corresponding `values.yaml` file in the repo. You can populate an instance of it and apply it with:
+这些值封装在仓库中对应的 values.yaml 文件中。您可以填充它的一个实例并通过以下方式应用：
 
 ```shell
 helm install -f https://raw.githubusercontent.com/bitnami/charts/master/bitnami/mariadb/values.yaml my-release bitnami/mariadb
 ```
 
-Alternatively, variables can be declared by using `--set`, such as:
+或者，可以通过使用 `--set` 来声明变量，例如：
 
 ```shell
 helm install my-release --set auth.rootPassword=secretpassword bitnami/mariadb
