@@ -197,9 +197,9 @@ BLOG_NAME=virtualthoughts.co.uk
 
 ## 了解如何扩展应用程序
 
-Constantly adding more, individual pods is not a sustainable model for scaling an application. To facilitate applications at scale, we need to leverage higher level constructs such as replicasets or deployments. As mentioned previously, `deployments` provide us with a single administrative unit to manage the underlying pods. We can scale a `deployment` object to increase the number of `pods`.
+断添加更多的单个 Pod 并不是一种可持续的应用程序扩展模式。为了促进大规模应用的部署，我们需要利用更高级的构造，如 ReplicaSets 或 Deployments。如前所述，`deployments` 为我们提供了一个单一的管理单元来管理底层的 Pod。我们可以通过扩展 `deployment` 对象来增加 Pod 的数量。
 
-As an example, if the following is deployed:
+例如，如果部署了以下内容：
 
 ```yaml
 apiVersion: apps/v1
@@ -220,24 +220,25 @@ spec:
        - containerPort: 80
 ```
 
-If we wanted to scale this, we can simply modify the yaml file and scale up/down the deployment by modifying the “replicas” field, or modify it in the fly:
+如果我们想要扩展它，我们可以简单地修改 yaml 文件并通过修改“replicas”字段来扩展/缩小部署，或者在运行时修改它：
+
 
 ```shell
 kubectl scale deployment nginx-deployment --replicas 10
 ```
 
-## Understand the primitives used to create robust, self-healing, application deployments
+## 理解用于创建健壮、自愈型应用部署的基础组件
 
-Deployments facilitate this by employing a reconciliation loop to check the number of deployed pods matches what’s defined in the manifest. Under the hood, deployments leverage ReplicaSets, which are primarily responsible for this feature.
+Deployment 通过使用协调循环来检查已部署的 Pod 数量是否与清单中定义的一致，从而实现这一点。在底层，Deployment 利用 ReplicaSet 来实现这一功能，而 ReplicaSet 主要负责这一特性。
 
-Stateful Sets are similar to deployments, for example they manage the deployment and scaling of a series of pods. However, in addition to deployments they also provide guarantees about the ordering and uniqueness of Pods. A StatefulSet maintains a sticky identity for each of their Pods. These pods are created from the same spec, but are not interchangeable: each has a persistent identifier that it maintains across any rescheduling.
+StatefulSet 与 Deployment 类似，例如它们都管理一系列 Pod 的部署和扩展。然而，除了 Deployment 的功能外，StatefulSet 还对 Pod 的顺序和唯一性提供了保证。StatefulSet 为每个 Pod 保持一个固定的身份。这些 Pod 虽然由相同的规范创建，但并不是可以互换的：每个 Pod 都有一个持久的标识符，在重新调度时也会保持不变。
 
-StatefulSets are valuable for applications that require one or more of the following.
+StatefulSet 对于需要以下一种或多种特性的应用程序非常有价值。
 
-* Stable, unique network identifiers.
-* Stable, persistent storage.
-* Ordered, graceful deployment and scaling.
-* Ordered, automated rolling updates.
+* 稳定且唯一的网络标识符。
+* 稳定且持久的存储。
+* 有序且平滑的部署与扩展。
+* 有序且自动化的滚动更新。
 
 ```yaml
 apiVersion: apps/v1
@@ -262,41 +263,41 @@ spec:
        - containerPort: 80
 ```
 
-## Understand how resource limits can affect Pod scheduling
+## 理解资源限制如何影响 Pod 调度
 
-At a namespace level, we can define resource limits. This enables a restriction in resources, especially helpful in multi-tenancy environments and provides a mechanism to prevent pods from consuming more resources than permitted, which may have a detrimental effect on the environment as a whole.
+在命名空间级别，我们可以定义资源限制。这可以对资源进行约束，特别适用于多租户环境，并提供了一种机制，防止 Pod 消耗超出允许范围的资源，从而避免对整个环境产生不利影响。
 
-We can define the following:
+我们可以定义以下内容：
 
-Default memory / CPU **requests & limits** for a namespace
+命名空间的默认内存 / CPU **requests & limits**（请求与限制）
 
-Minimum and Maximum memory / CPU **constraints** for a namespace
+命名空间的最小和最大内存 / CPU **constraints**（约束）
 
-Memory/CPU **Quotas** for a namespace
+命名空间的内存 / CPU **Quotas**（配额）
 
-### Default Requests and Limits
+### 默认请求和限制
 
-If a container is created in a namespace with a default request/limit value and doesn't explicitly define these in the manifest, it inherits these values from the namespace
+如果在具有默认请求/限制值的命名空间中创建容器，并且在清单中没有显式定义这些值，则容器会继承命名空间的这些值。
 
-Note, if you define a container with a memory/CPU limit, but not a request, Kubernetes will define the limit the same as the request.
+注意，如果你为容器定义了内存/CPU 限制，但没有定义请求，Kubernetes 会将限制值作为请求值。
 
-### Minimum / Maximum Constraints
+### 最小 / 最大约束
 
-If a pod does not meet the range in which the constraints are valued at, it will not be scheduled.
+如果 Pod 不符合约束设定的范围，它将不会被调度。
 
-### Quotas
+### 配额
 
-Control the _total_ amount of CPU/memory that can be consumed in the _namespace_ as a whole.
+控制整个 _命名空间_ 内可消耗的 CPU/内存 _总_ 量。
 
-Example: Attempt to schedule a pod that request more memory than defined in the namespace
+示例: 尝试调度一个请求的内存超过命名空间定义限制的 Pod
 
-Create a namespace:
+创建命名空间：
 
 ```shell
 kubectl create namespace tenant-mem-limited
 ```
 
-Create a YAML manifest to limit resources:
+创建一个用于限制资源的 YAML 清单：
 
 ```yaml
 apiVersion: v1
@@ -311,13 +312,13 @@ spec:
     type: Container
 ```
 
-Apply this to the aforementioned namespace:
+将其应用到上述命名空间：
 
 ```shell
 kubectl apply -f maxmem.yaml
 ```
 
-To create a pod with a memory request that exceeds the limit:
+创建一个内存请求超出限制的 Pod：
 
 ```yaml
 apiVersion: v1
@@ -334,19 +335,19 @@ spec:
         memory: "300Mi"
 ```
 
-Executing the above will yield the following result:
+执行上述操作将产生以下结果：
 
 ```shell
 The Pod "too-much-memory" is invalid: spec.containers[0].resources.requests: Invalid value: "300Mi": must be less than or equal to memory limit
 ```
 
-As we have defined the pod limit of the namespace to 250MiB, a request for 300MiB will fail.
+由于我们已将命名空间的 Pod 限制设置为 250MiB，因此请求 300MiB 会失败。
 
-## Awareness of manifest management and common templating tools
+## 了解清单管理和常用模板工具
 
 ### Kustomize
 
-Kustomize is a templating tool for Kubernetes manifests in its native form (Yaml). When working with raw YAML files you will typically have a directory containing several files identifying the resources it creates. To begin, a directory containing our manifests needs to exist:
+[Kustomize](https://kubernetes.io/zh-cn/docs/tasks/manage-kubernetes-objects/kustomization/) 是一个用于原生 Kubernetes 清单（YAML 格式）的模板工具。在处理原始 YAML 文件时，通常会有一个目录，里面包含多个用于标识所创建资源的文件。首先，需要有一个包含我们清单的目录：
 
 ```shell
 /home/david/app/base
@@ -357,9 +358,9 @@ drwxr-xr-x 27 david david 4096 Feb  9 11:44 ..
 -rw-rw-r--  1 david david  153 Feb  9 11:09 service.yaml
 ```
 
-This will form our `base` - we will build on this but adding customisations in the form of overlays. First, we need a `kustomize` file. which can be created with `kustomize create --autodetect`
+这将构成我们的 base——我们将在此基础上通过添加覆盖（overlays）来进行自定义。首先，我们需要一个 kustomize 文件，可以通过 kustomize create --autodetect 创建。
 
-This will create kustomization.yaml in the current directory:
+这将在当前目录下生成 kustomization.yaml 文件：
 
 ```shell
 total 20
@@ -370,7 +371,7 @@ drwxr-xr-x 27 david david 4096 Feb  9 11:47 ..
 -rw-rw-r--  1 david david  153 Feb  9 11:09 service.yaml
 ```
 
-The contents being:
+内容如下：
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -380,25 +381,25 @@ resources:
 - service.yaml
 ```
 
-#### Variants and Overlays
+### 变体与覆盖层
 
-* variant - Divergence in configuration from the `base`
-* overlay - Composes variants together
+* 变体（variant）——与 base 配置有所不同的配置
+* 覆盖层（overlay）——将多个变体组合在一起
 
-Say, for example, we wanted to generate manifests for different environments (prod and dev) that are based from this config, but have additional customisations. In this example we will create a `dev` variant encapsulated in a single Overlay
+比如说，我们想为不同的环境（生产 prod 和开发 dev）生成基于此配置的清单，但又有额外的自定义。在本例中，我们将创建一个包含在单一覆盖层中的 dev 变体。
 
 ```shell
 mkdir -p overlays/{dev,prod}
 cd overlays/dev 
 ```
 
-Begin by creating a Kustomization object specifying the base (this will create `kustomization.yaml`) :
+首先创建一个 Kustomization 对象，指定 base（这将生成 `kustomization.yaml` 文件）：
 
 ```shell
 kustomize create --resources ../../base
 ```
 
-In this example, I want to change the replica count to 1, as it's a dev environment. In the `dev` directory, create a new file `deployment.yaml` containing:
+在本例中，我想将副本数更改为 1，因为这是开发环境。在 `dev` 目录下，新建一个名为 `deployment.yaml` 的文件，内容如下：
 
 ```yaml
 apiVersion: apps/v1
@@ -411,7 +412,7 @@ spec:
   replicas: 1
 ```
 
-The `kustomization.yaml` file needs modifying to include a `patchesStrategicMerge` block:
+`kustomization.yaml` 文件需要修改以包含 `patchesStrategicMerge` 块：
 
 ```yaml
 apiVersion: kustomize.config.k8s.io/v1beta1
@@ -422,15 +423,15 @@ patchesStrategicMerge:
   - deployment.yaml
 ```
 
-Patches can be used to apply different customizations to Resources. Kustomize supports different patching mechanisms through `patchesStrategicMerge` and `patchesJson6902`. `patchesStrategicMerge` is a list of file paths.
+补丁可用于对资源应用不同的自定义。Kustomize 通过 `patchesStrategicMerge` 和 `patchesJson6902` 支持不同的补丁机制。`patchesStrategicMerge` 是一个文件路径列表。
 
-We can generate the manifests and apply to the cluster by executing (from the base folder):
+我们可以通过在基础目录下执行以下命令来生成清单并应用到集群：
 
 ```shell
 kustomize build ./overlay/dev | kubectl apply -f -
 ```
 
-By running this, only 1 pod will be created in the deployment object, instead of what's defined in the `base` because of the customisation we've applied. We can do the same with prod, or any arbitrary number of environments.
+通过运行此命令，由于我们应用了自定义，部署对象中只会创建 1 个 Pod，而不是 `base` 中定义的数量。我们也可以对生产环境或任意数量的其他环境进行同样的操作。
 
 
 ### Helm
