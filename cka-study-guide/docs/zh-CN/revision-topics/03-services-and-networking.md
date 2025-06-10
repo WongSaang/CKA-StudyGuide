@@ -1,50 +1,50 @@
-# Services & Networking
+# 服务和网络
 
-## Understand host networking configuration on the cluster nodes
+## 理解集群节点上的主机网络配置
 
 ![img.png](images/networking.png)
 
-At the host level, we have an interface (typically something like `eth0` or `ens192` etc) that acts as the primary network adapter.  
+在主机级别，我们有一个接口（通常是 `eth0` 或 `ens192` 等）作为主要网络适配器。  
 
-Each host is responsible for one subnet of the CNI range. In this example, the left host is responsible for 10.1.1.0/24, and the right host 10.1.2.0/24. The overall pod CIDR block may be something like 10.1.0.0/16.
+每个主机负责 CNI 范围的一个子网。在这个例子中， 左侧主机负责 10.1.1.0/24，右侧主机负责 10.1.2.0/24。整体 Pod CIDR 块可能类似于 10.1.0.0/16。
 
-Virtual ethernet adapters are paired with a corresponding Pod network adapter. Kernel routing is used to enable Pods to communicate outside the host it resides in.
+虚拟以太网适配器与相应的 Pod 网络适配器配对。内核路由用于使 Pods 能够与其所在主机之外的其他主机通信。
 
-## Understand connectivity between Pods
+## 理解 Pods 之间的连接
 
-Every Pod gets its own IP address. This means you do not need to explicitly create links between Pods, and you almost never need to deal with mapping container ports to host ports. This creates a clean, backwards-compatible model where Pods can be treated much like VMs or physical hosts from the perspectives of port allocation, naming, service discovery, load balancing, application configuration, and migration.
+每个 Pod 都有自己的 IP 地址。这意味着你无需显式地为 Pod 之间创建连接，也几乎不需要处理容器端口到主机端口的映射。这种方式创建了一个简洁且向后兼容的模型，从端口分配、命名、服务发现、负载均衡、应用配置和迁移等角度来看，Pod 可以像虚拟机或物理主机一样对待。
 
-Kubernetes imposes the following fundamental requirements on any networking implementation (barring any intentional network segmentation policies):
+Kubernetes 对任何网络实现都提出了以下基本要求（不包括有意的网络分段策略）：
 
-* Pods on a node can communicate with all pods on all nodes without NAT
-* Agents on a node (e.g. system daemons, Kubelet) can communicate with all pods on that node
+* 一个节点上的 Pod 可以与所有节点上的所有 Pod 通信，无需 NAT
+* 一个节点上的代理（如系统守护进程、Kubelet）可以与该节点上的所有 Pod 通信
 
-Note: When running workloads that leverage `hostNetwork`:
+注意：当运行使用 `hostNetwork` 的工作负载时：
 
-* Pods in the host network of a node can communicate with all pods on all nodes without NAT
+处于主机网络的 Pod 可以与所有节点上的所有 Pod 通信，无需 NAT
 
-## Understand ClusterIP, NodePort, LoadBalancer service types and endpoints
+## 理解 ClusterIP（集群IP）、NodePort（节点端口）、LoadBalancer（负载均衡器）服务类型和端点
 
-Pods are ephemeral. Therefore, placing these behind a service which provides a stable, static entrypoint is a fundamental use of the kubernetes service object. To reiterate, services take the form of the following:
+Pod 是临时性的。因此，将它们置于提供稳定、静态入口的 Service 后面，是 Kubernetes Service 对象的基本用途。重申一下，Service 主要有以下几种形式：
 
-* ClusterIP - Internal only
-* LoadBalancer - External, requires cloud provider, or software implementation to provide one
-* NodePort - External, requires access the nodes directly
-* Ingress resource - L7 An Ingress can be configured to give services externally-reachable URLs, load balance traffic, terminate SSL, and offer name based virtual hosting. An Ingress controller is responsible for fulfilling the Ingress, usually with a loadbalancer, though it may also configure your edge router or additional frontends to help handle the traffic.
+* ClusterIP（集群IP）- 仅供内部访问
+* LoadBalancer（负载均衡器）- 外部访问，需要云服务商或软件实现来提供
+* NodePort（节点端口）- 外部访问，需要直接访问节点
+* Ingress 资源 - 七层（L7），Ingress 可配置为为服务提供外部可访问的 URL、负载均衡流量、终止 SSL，并支持基于名称的虚拟主机。Ingress 控制器负责实现 Ingress，通常通过负载均衡器，也可以配置边缘路由器或额外前端来帮助处理流量。
 
-## Know how to use Ingress controllers and Ingress resources
+## 知道如何使用 Ingress 控制器和 Ingress 资源
 
-Ingress exposes HTTP and HTTPS routes from outside the cluster to services within a cluster. Ingress consists of two components. Ingress Resource is a collection of rules for the inbound traffic to reach Services. These are Layer 7 (L7) rules that allow hostnames (and optionally paths) to be directed to specific Services in Kubernetes. The second component is the Ingress Controller which acts upon the rules set by the Ingress Resource, typically via an HTTP or L7 load balancer. It is vital that both pieces are properly configured to route traffic from an outside client to a Kubernetes Service.
+Ingress 将来自集群外部的 HTTP 和 HTTPS 路由暴露给集群内的服务。Ingress 由两个组件组成。Ingress 资源是一组用于将入站流量引导到服务的规则。这些是第七层（L7）规则，允许将主机名（以及可选的路径）定向到 Kubernetes 中的特定服务。第二个组件是 Ingress 控制器，它根据 Ingress 资源设置的规则进行操作，通常通过 HTTP 或 L7 负载均衡器实现。要将外部客户端的流量路由到 Kubernetes 服务，必须正确配置这两个部分。
 
 ![img.png](images/ingress.png)
 
-The following yaml creates two ingress rules for the website foo.bar.com
+下面的 yaml 创建了两个 Ingress 规则，用于网站 foo.bar.com
 
-The default path will direct traffic to the service “default-service” which listens on port 80
+默认路径将流量引导到监听端口 80 的服务 “default-service”
 
-Paths ending in /foo will direct traffic to the service “service1” which listens on port 4200
+以 /foo 结尾的路径将流量引导到监听端口 4200 的服务 “service1”
 
-Paths ending in /bar will direct traffic to the service “service2” which listens on port 8080
+以 /bar 结尾的路径将流量引导到监听端口 8080 的服务 “service2”
 
 ```yaml
 apiVersion: networking.k8s.io/v1
@@ -79,7 +79,7 @@ spec:
                   number: 8080
 ```
 
-In order for the Ingress resource to work, the cluster must have an ingress controller running. Ingress controllers are deployed into the Kubernetes cluster as a workload:
+为了让 Ingress 资源生效，集群中必须运行一个 Ingress 控制器。Ingress 控制器作为工作负载部署到 Kubernetes 集群中：
 
 ```shell
 > kubectl get po -A | grep nginx-ingress
@@ -88,9 +88,9 @@ ingress-nginx              nginx-ingress-controller-9lrzh                       
 ingress-nginx              nginx-ingress-controller-r2ksq                            1/1     Running     0          14d
 ```
 
-## Know how to configure and use CoreDNS
+## 知道如何配置和使用 CoreDNS
 
-As of 1.13, coredns has replaced kube-dns as the facilitator of cluster DNS and runs as pods.
+从 1.13 版本开始，CoreDNS 已取代 kube-dns 成为集群 DNS 的提供者，并以 Pod 形式运行。
 
 ```shell
 kubectl get pods -n kube-system
@@ -99,7 +99,7 @@ coredns-fb8b8dccf-hxbhn                 1/1     Running   9          10d
 coredns-fb8b8dccf-jks6g                 1/1     Running   4          8d
 ```
 
-To view the DNS configuration of a pod, spin one up and inspect the /etc/resolv.conf:
+要查看 Pod 的 DNS 配置，可以启动一个 Pod 并检查 `/etc/resolv.conf`:
 
 ```shell
 kubectl run busybox --image=busybox -- sleep 9000
@@ -110,17 +110,17 @@ search default.svc.cluster.local svc.cluster.local cluster.local virtualthoughts
 options ndots:5
 ```
 
-“10.96.0.10” references the `Kube-DNS` service
+`10.96.0.10` 指向 `Kube-DNS` 服务
 
-“Default.svc.cluster.local” References the namespace with the suffix svc.cluster.local.
+`Default.svc.cluster.local` 指向带有 `svc.cluster.local` 后缀的命名空间。
 
-All pods are provisioned a DNS record and are in the format of
+所有 Pod 都会被分配一个 DNS 记录，格式如下：
 
-**[Pod IP separated by dashes].[Namespace].[type].[Base Domain Name]**
+**[用短横线分隔的 Pod IP ].[命名空间].[类型].[基础域名]**
 
-Where `[type]` is `pod` in this example, put services can be resolved by the same convention.
+在本例中，`[类型]` 是 `pod`，但服务也可以用相同的方式解析。
 
-For example:
+例如:
 
 ```shell
 / # nslookup 10-42-2-68.default.pod.cluster.local
@@ -132,17 +132,17 @@ Address: 10.42.2.68
 
 ```
 
-Services follow a similar pattern
+服务遵循类似的命名规则
 
-**[Service Name].[Namespace].[type].[Base Domain Name]**
+**[服务名称].[命名空间].[类型].[基础域名]**
 
-For example:
+例如:
 
 ```shell
 my-svc.my-namespace.svc.cluster-domain.example
 ```
 
-Headless services are those without a cluster ip, but will respond with a list of IP’s of pods that are applicable at that particular moment in time.
+无头服务是没有集群 IP 的服务，但会返回当前时刻可用的 Pod 的 IP 列表。
 
 ```yaml
 apiVersion: v1
@@ -158,7 +158,7 @@ spec:
     app: web-headless
 ```
 
-We can modify the default behavior of the pod dns configuration in the yaml file:
+我们可以在 YAML 文件中修改 Pod DNS 配置的默认行为：
 
 ```yaml
 apiVersion: v1
@@ -183,7 +183,7 @@ spec:
       - name: edns0
 ```
 
-CoreDNS also has a configmap that can be modified:
+CoreDNS 还有一个可以修改的 ConfigMap：
 
 ```shell
 kubectl get cm coredns -n kube-system -o yaml                                                            
@@ -217,28 +217,29 @@ data:
 
 ```
 
-The Corefile configuration includes the following plugins of CoreDNS:
+Corefile 配置包含以下 CoreDNS 插件：
 
-* `errors`: Errors are logged to stdout.
-* `health`: Health of CoreDNS is reported to `http://localhost:8080/health`. In this extended syntax lameduck will make the process unhealthy then wait for 5 seconds before the process is shut down.
-* `ready`: An HTTP endpoint on port 8181 will return 200 OK, when all plugins that are able to signal readiness have done so.
-* `kubernetes`: CoreDNS will reply to DNS queries based on IP of the services and pods of Kubernetes. You can find more details about that plugin on the CoreDNS website. ttl allows you to set a custom TTL for responses. The default is 5 seconds. The minimum TTL allowed is 0 seconds, and the maximum is capped at 3600 seconds. Setting TTL to 0 will prevent records from being cached. The pods insecure option is provided for backward compatibility with kube-dns. You can use the pods verified option, which returns an A record only if there exists a pod in same namespace with matching IP. The pods disabled option can be used if you don't use pod records.
-* `prometheus`: Metrics of CoreDNS are available at `http://localhost:9153/metrics` in Prometheus format (also known as OpenMetrics).
-* `forward`: Any queries that are not within the cluster domain of Kubernetes will be forwarded to predefined resolvers (/etc/resolv.conf). cache: This enables a frontend cache.
-* `loop`: Detects simple forwarding loops and halts the CoreDNS process if a loop is found.
-* `reload`: Allows automatic reload of a changed Corefile. After you edit the ConfigMap configuration, allow two minutes for your changes to take effect.
+* `errors`: 错误会被记录到标准输出（stdout）。
+* `health`: CoreDNS 的健康状况会报告到 `http://localhost:8080/health`. 在这种扩展语法下，lameduck 会让进程变为不健康状态，然后在进程关闭前等待 5 秒。
+* `ready`: 当所有能够发出就绪信号的插件都已就绪时，端口 8181 上的 HTTP 端点会返回 200 OK。
+* `kubernetes`: CoreDNS 会根据 Kubernetes 服务和 Pod 的 IP 响应 DNS 查询。你可以在 CoreDNS 官网找到该插件的更多细节。ttl 允许你为响应设置自定义的 TTL，默认值为 5 秒。允许的最小 TTL 是 0 秒，最大为 3600 秒。将 TTL 设置为 0 可以防止记录被缓存。pods insecure 选项是为与 kube-dns 的兼容性而提供的。你可以使用 pods verified 选项，只有当同一命名空间中存在匹配 IP 的 Pod 时才返回 A 记录。如果你不使用 Pod 记录，可以使用 pods disabled 选项。
+* `prometheus`: CoreDNS 的指标以 Prometheus 格式（也称为 OpenMetrics）在 `http://localhost:9153/metrics` 提供。
+* `forward`: 所有不属于 Kubernetes 集群域的查询都会被转发到预定义的解析器（/etc/resolv.conf）。
+* `cache`：启用前端缓存。
+* `loop`: 检测简单的转发循环，如果发现循环会停止 CoreDNS 进程。
+* `reload`: 允许自动重新加载已更改的 Corefile。在你编辑 ConfigMap 配置后，需等待两分钟更改才会生效。
 
-You can modify the default CoreDNS behavior by modifying the ConfigMap.
+你可以通过修改 ConfigMap 来更改 CoreDNS 的默认行为。
 
-## Choose an appropriate container network interface plugin
+## 选择合适的容器网络接口插件
 
-You must deploy a Container Network Interface (CNI) based Pod network add-on so that your Pods can communicate with each other. Cluster DNS (CoreDNS) will not start up before a network is installed.
+你必须部署基于 CNI（容器网络接口）的 Pod 网络插件，这样 Pod 之间才能相互通信。在网络安装之前，集群 DNS（CoreDNS）不会启动。
 
 [https://kubernetes.io/docs/concepts/cluster-administration/addons/#networking-and-network-policy](https://kubernetes.io/docs/concepts/cluster-administration/addons/#networking-and-network-policy)
 
-As a generalisation, CNI’s provide some kind of network overlay. But each have their own features, limitations and considerations.
+一般来说，CNI 提供某种网络覆盖层。但每种 CNI 都有其自身的特性、限制和注意事项。
 
-CNI's manifest and Kubernetes pods in your cluster. A typical workflow would involve standing up your k8s cluster and applying a network cni with:
+CNI 的清单和你集群中的 Kubernetes Pod。典型的工作流程是先搭建好 k8s 集群，然后通过以下方式应用网络 CNI：
 
 ```shell
 kubectl apply -f <add-on.yaml>
