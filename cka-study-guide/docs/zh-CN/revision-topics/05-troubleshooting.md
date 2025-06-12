@@ -1,16 +1,16 @@
-# Troubleshooting
+# 故障排查
 
-## Evaluate cluster and node logging
+## 评估集群和节点日志
 
-### Master Node(s)
+### 主节点
 
 #### ETCD
 
-Usually, most etcd implementations also include etcdctl, which can aid in monitoring the state of the cluster. If you’re unsure where to find it, execute the following:
+通常，大多数 etcd 实现也包含 etcdctl，它可以帮助监控集群状态。如果你不确定在哪里可以找到它，可以执行以下命令：
 
 `find / -name etcdctl`
 
-Leveraging this tool to check the cluster status:
+利用该工具检查集群状态：
 
 ```bash
 etcdctl --write-out=table --endpoints=$ENDPOINTS endpoint status
@@ -23,9 +23,9 @@ etcdctl --write-out=table --endpoints=$ENDPOINTS endpoint status
 +------------------------+------------------+---------+---------+-----------+------------+-----------+------------+--------------------+--------+
 ```
 
-The cluster this was executed on has only one master node, hence only one result from the script. You will normally receive a response for each etcd member in the cluster.
+此命令执行的集群只有一个主节点，因此脚本只返回一个结果。通常，你会为集群中的每个 etcd 成员收到一个响应。
 
-Alternatively, leverage kubectl get componentstatuses:
+另外，也可以使用 kubectl get componentstatuses：
 
 ```bash
 kubectl get componentstatuses #ComponentStatus is deprecated in v1.19+
@@ -37,7 +37,7 @@ etcd-1               Healthy   {"health":"true"}
 etcd-0               Healthy   {"health":"true"} 
 ```
 
-Etcd may also be running as a Pod:
+Etcd 也可能以 Pod 的形式运行：
 
 ```shell
 kubectl logs etcd-ubuntu -n kube-system
@@ -45,19 +45,19 @@ kubectl logs etcd-ubuntu -n kube-system
 
 #### Kube-apiserver
 
-This is dependent on the environment for which the Kubernetes platform has been installed on. For systemd based systems:
+这取决于 Kubernetes 平台所安装的环境。对于基于 systemd 的系统：
 
 ```bash
 journalctl -u kube-apiserver
 ```
 
-Or
+或者
 
 ```bash
 cat /var/log/kube-apiserver.log
 ```
 
-Or for instances where Kube-API server is running as a static pod:
+或者在 Kube-API Server 以静态 Pod 运行的情况下：
 
 ```bash
 kubectl logs kube-apiserver-k8s-master-03 -n kube-system
@@ -65,19 +65,19 @@ kubectl logs kube-apiserver-k8s-master-03 -n kube-system
 
 #### Kube-Scheduler
 
-For systemd-based systems
+对于基于 systemd 的系统
 
 ```bash
 journalctl -u kube-scheduler
 ```
 
-Or
+或者
 
 ```bash
 cat /var/log/kube-scheduler.log
 ```
 
-Or for instances where Kube-Scheduler is running as a static pod:
+或者在 Kube-Scheduler 以静态 Pod 运行的情况下：
 
 ```bash
 kubectl logs kube-scheduler-k8s-master-03 -n kube-system
@@ -85,35 +85,35 @@ kubectl logs kube-scheduler-k8s-master-03 -n kube-system
 
 #### Kube-Controller-Manager
 
-For systemd-based systems
+对于基于 systemd 的系统
 
 ```bash
 journalctl -u kube-controller-manager
 ```
 
-Or
+或者
 
 ```bash
 cat /var/log/kube-controller-manager.log
 ```
 
-Or for instances where Kube-controller manager is running as a static pod:
+或者在 Kube-controller manager 以静态 Pod 运行的情况下：
 
 ```bash
 kubectl logs kube-controller-manager-k8s-master-03 -n kube-system
 ```
 
-### Worker Node(s)
+### 工作节点
 
 #### CNI
 
-Obviously this is dependent on the CNI in use for the cluster you’re working on. However, using Flannel as an example:
+显然，这取决于你所在集群所使用的 CNI。不过，以 Flannel 为例：
 
 ```bash
 journalctl -u flanneld
 ```
 
-If running as a pod, however:
+如果是以 Pod 形式运行，则：
 
 ```shell
 Kubectl logs --namespace kube-system <POD-ID> -c kube-flannel
@@ -122,19 +122,18 @@ kubectl logs --namespace kube-system weave-net-pwjkj -c weave
 
 #### Kube-Proxy
 
-For systemd-based systems
+对于基于 systemd 的系统
 
 ```shell
 journalctl -u kube-proxy
 ```
 
-Or
+或者
 
 ```shell
 cat /var/log/kube-proxy.log
 ```
-
-Or for instances where Kube-proxy manager is running as a static pod:
+或者在 Kube-proxy 以静态 Pod 运行的情况下：
 
 ```bash
 kubectl logs kube-proxy -n kube-system
@@ -146,55 +145,55 @@ kubectl logs kube-proxy -n kube-system
 journalctl -u kubelet
 ```
 
-Or
+或者
 
 ```shell
 cat /var/log/kubelet.log
 ```
 
-#### Container Runtime
+#### 容器运行时
 
-Similarly to the CNI, this depends on which container runtime has been deployed, but using Docker as an example:
+与 CNI 类似，这也取决于部署了哪种容器运行时，这里以 Docker 为例：
 
-For systemd-based systems:
+对于基于 systemd 的系统：
 
 ```shell
 journalctl -u docker.service
 ```
 
-Or
+或者
 
 ```shell
 cat /var/log/docker.log
 ```
 
-Hint : list the contents of `etc/systemd/system` if it’s a systemd-based service (containerd.service may be here)
+提示：如果是基于 systemd 的服务，可以列出 `etc/systemd/system` 的内容（containerd.service 可能在这里）
 
-#### Cluster Logging
+#### 集群日志
 
-At a cluster level, `kubectl get events` provides a good overview.
+在集群层面，`kubectl get events` 可以提供一个很好的概览。
 
-## Understand how to monitor applications
+## 理解如何监控应用程序
 
-This section is a bit open-ended as it highly depends on what you have deployed and the topology of an application. Typically, however, we have an application that runs as a number of inter-connected **microservices**, consequently we monitor our applications by monitoring the underlying objects that comprise it, such as:
+本节内容较为开放，因为它高度依赖于你部署的内容和应用的拓扑结构。但通常情况下，我们的应用由多个互相连接的**微服务**组成，因此我们通过监控构成应用的底层对象来监控应用本身，例如：
 
 * Pods
 * Deployments
 * Services
 * etc
 
-## Manage container stdout & stderr logs
+## 管理容器 stdout 和 stderr 日志
 
 ![img.png](images/logging.png)
 
-Kubernetes handles and redirects any output generated from a containers stdout and stderr streams. These get directed through a logging driver which influences where to store these logs. Different implementations of Docker differ in exact implementation (such as RHEL's flavor of Docker) but commonly, these drivers will write to a file in json format:
+Kubernetes 会处理并重定向容器 stdout 和 stderr 流产生的所有输出。这些输出会通过日志驱动程序进行转发，日志驱动决定日志的存储位置。同的 Docker 实现（如 RHEL 版本的 Docker）在具体实现上有所不同，但通常，这些驱动会将日志以 json 格式写入文件：
 
 ```shell
 root@ubuntu:~# docker info | grep "Logging Driver"
  Logging Driver: json-file
 ```
 
-The location for these logs is typically `/var/log/containers` but can be tweaked. Additionally, these contain symlinks:
+这些日志通常位于 /var/log/containers，但位置可以调整。此外，这些日志包含符号链接（symlinks）：
 
 ```shell
 root@ubuntu:~# ls -la /var/log/containers/
@@ -212,32 +211,32 @@ lrwxrwxrwx  1 root root     96 Feb  8 19:17 kube-proxy-l52f9_kube-system_kube-pr
 lrwxrwxrwx  1 root root    101 Feb  8 19:17 kube-scheduler-ubuntu_kube-system_kube-scheduler-4a695e53684f4591ec9385d6944f7841c0329aa49be220e5af6304da281cb41a.log -> /var/log/pods/kube-system_kube-scheduler-ubuntu_69cd289b4ed80ced4f95a59ff60fa102/kube-scheduler/0.log
 ```
 
-## Troubleshoot application failure
+## 排查应用故障
 
-This is a somewhat ambitious topic to cover as how we approach troubleshooting application failures varies by the architecture of that application, which resources/API objects we're leveraging, if the application contains logs. However, good starting points would include running things like:
+这是一个比较庞大的主题，因为排查应用故障的方法会因应用架构、所用资源/API 对象以及应用是否有日志而异。不过，一些好的起点包括运行如下命令：
 
 * `kubectl describe <object>`
 * `kubectl logs <podname>`
 * `kubectl get events`
 
-## Troubleshoot cluster component failure
+## 排查集群组件故障
 
-Covered in "Evaluate cluster and node logging"
+已在“评估集群和节点日志”部分介绍
 
-## Troubleshoot networking
+## 排查网络问题
 
-### DNS Resolution
+### DNS 解析
 
-`Pods` and `Services` will automatically have a DNS record registered against `coredns` in the cluster, aka "A" records for IPv4 and "AAAA" for IPv6. The format of which is:
+`Pods` 和 `Services` 会自动在集群中的  `coredns` 注册 DNS 记录，即 IPv4 的 "A" 记录和 IPv6 的 "AAAA" 记录。其格式如下：
 
 `pod-ip-address.my-namespace.pod.cluster-domain.example`
 `my-svc-name.my-namespace.svc.cluster-domain.example`
 
-Pod DNS records resolve to a single entity, even if the Pod contains multiple containers as they share the same networking space.
+Pod 的 DNS 记录会解析为单个实体，即使 Pod 内有多个容器，因为它们共享同一个网络空间。
 
-Service DNS records resolve to the respective service object.
+Service 的 DNS 记录会解析到对应的 Service 对象。
 
-Pods will automatically have their DNS resolution configured based on coredns settings. This can be validated by opening a shell to the pod and inspecting /etc/resolv.conf:
+Pod 会根据 coredns 的设置自动配置 DNS 解析。你可以通过进入 Pod 的 shell 并检查 /etc/resolv.conf 文件来验证这一点:
 
 ```shell
 > kubectl exec -it web-server sh
@@ -248,7 +247,7 @@ search default.svc.cluster.local svc.cluster.local cluster.local eu-central-1.co
 options ndots:5
 ```
 
-`10.43.0.10` being the coredns service object:
+`10.43.0.10` 是 coredns 服务对象：
 
 ```shell
 > kubectl get svc -n kube-system 
@@ -256,7 +255,7 @@ NAME                         TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)  
 kube-dns                     ClusterIP   10.43.0.10      <none>        53/UDP,53/TCP,9153/TCP         16d
 ```
 
-To test resolution, we can run a pod with `nslookup` to test. For the pod below:
+要测试解析，我们可以运行一个带有 `nslookup` 的 Pod 进行测试。对于下面这个 Pod：
 
 ```shell
 > kubectl get po -o wide
@@ -264,11 +263,11 @@ NAME         READY   STATUS    RESTARTS   AGE     IP           NODE             
 web-server   1/1     Running   0          2d20h   10.42.1.31   ip-172-31-36-67   <none>           <none>
 ```
 
-Knowing the format of the A record:
+已知 A 记录的格式为：
 
 `pod-ip-address.my-namespace.pod.cluster-domain.example`
 
-We should be able to resolve `10-42-1-31.default.pod.cluster.local`. Tip : To determine the cluster domain, inspect the coredns configmap. Below indicating `cluster.local`.
+我们应该能够解析 `10-42-1-31.default.pod.cluster.local`. 提示：要确定集群域名，可以检查 coredns 的 configmap。如下所示，集群域名为 `cluster.local`.
 
 ```shell
 > kubectl get cm coredns -n kube-system -o yaml
@@ -284,13 +283,13 @@ data:
         kubernetes cluster.local in-addr.arpa ip6.arpa {
 ```
 
-Create a Pod with the tools required:
+创建一个包含所需工具的 Pod：
 
 ```shell
 kubectl apply -f https://k8s.io/examples/admin/dns/dnsutils.yaml
 ```
 
-Test lookup:
+测试DNS查询:
 
 ```shell
 kubectl exec -i -t dnsutils -- nslookup 10-42-1-31.default.pod.cluster.local
@@ -305,7 +304,7 @@ Name:   10-42-1-31.default.pod.cluster.local
 Address: 10.42.1.31
 ```
 
-Similarly, for a service, in this case a service called `nginx-service` that resides in the default namespace:
+同理，对于服务，比如在 default 命名空间下的名为 `nginx-service` 的服务：
 
 ```shell
 > kubectl exec -i -t dnsutils -- nslookup nginx-service.default.svc.cluster.local
@@ -322,9 +321,9 @@ NAME            TYPE        CLUSTER-IP    EXTERNAL-IP   PORT(S)   AGE
 nginx-service   ClusterIP   10.43.0.223   <none>        80/TCP    9m15s
 ```
 
-### CNI Issues
+### CNI 问题
 
-Mainly covered earlier in acquiring logs for the CNI. However, one issue that might occur is when a CNI is incorrectly, or not initialised. This may cause workloads to enter a `pending` status:
+主要内容已在前文获取 CNI 日志时介绍。不过，可能出现的一个问题是 CNI 初始化不正确或未初始化，这可能导致工作负载进入`pending` 状态:
 
 ```shell
 kubectl get po -o wide
@@ -332,8 +331,8 @@ NAME    READY   STATUS    RESTARTS   AGE   IP       NODE     NOMINATED NODE   RE
 nginx   0/1     Pending   0          57s   <none>   <none>   <none>           <none>
 ```
 
-`kubectl describe <pod>` can help identify issues with assigning IP addresses to nodes from the CNI
+`kubectl describe <pod>` 可以帮助定位 CNI 分配节点 IP 地址时的问题。
 
-### Port Checking
+### 端口检查
 
-Similarly, with leveraging `nslookup` to validate DNS resolution in our cluster, we can lean on other tools to perform other diagnostic. All we need is a pod that has a utility like `netcat`, `telnet` etc.
+类似于使用 `nslookup` 验证集群中的 DNS 解析，我们也可以依赖其他工具进行端口诊断。只需要一个包含 `netcat`, `telnet` 等工具的 Pod 即可。.
